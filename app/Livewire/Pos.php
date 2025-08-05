@@ -12,7 +12,7 @@ class Pos extends Component
     public collection $products;
     public collection $categories;
 
-    public $activeCategory='16';
+    public $activeCategory=0;
     public $searchTerm;
 
     public function mount(){
@@ -27,7 +27,15 @@ class Pos extends Component
                 ->when($this->searchTerm, fn ($q) => $q->where('name', 'like', '%' . $this->searchTerm . '%'))
                 ->get();
 
-                $this->categories = Category::select('id', 'name')->get();
+               // Tambahkan "Semua Menu" ke awal list kategori
+            $allCategories = collect([
+                (object)['id' => 0, 'name' => 'Semua Menu']
+            ]);
+            
+            $this->categories = $allCategories->merge(
+                Category::select('id', 'name')->get()
+            );
+           
         } 
     }
 

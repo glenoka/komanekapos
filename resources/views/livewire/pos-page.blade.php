@@ -36,6 +36,7 @@
             <main class="flex-1 overflow-y-auto" wire:loading.class="opacity-50">
                 <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5 gap-4 sm:gap-5">
                     @forelse($products as $product)
+                   
                         <div wire:click="addToCart({{ $product['id'] }})" class="bg-white rounded-xl shadow-md p-3 flex flex-col cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
                             <img src="{{ $product['image'] ?? 'https://placehold.co/300x300' }}" alt="{{ $product['name'] }}" class="w-full h-24 sm:h-32 object-cover rounded-lg mb-3">
                             <div class="flex-1 flex flex-col">

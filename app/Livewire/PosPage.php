@@ -66,7 +66,8 @@ public function closeModal()
                 ->when($this->searchTerm, fn ($q) => $q->where('name', 'like', '%' . $this->searchTerm . '%'))
                 ->get();
 
-                $this->categories = Category::select('id', 'name')->get();
+                $this->categories = Category::select('id', 'name')->get()
+    ->prepend((object)['id' => 0, 'name' => 'Semua Menu']);
         } 
     }
 
