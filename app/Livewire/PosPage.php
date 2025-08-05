@@ -15,7 +15,7 @@ class PosPage extends Component
     
     public collection $products;
     public collection $categories;
-    public string $activeCategory='Semua Menu';
+    public string $activeCategory='16';
     public string $searchTerm='';
 
     //cart
@@ -66,8 +66,7 @@ public function closeModal()
                 ->when($this->searchTerm, fn ($q) => $q->where('name', 'like', '%' . $this->searchTerm . '%'))
                 ->get();
 
-                $this->categories = Category::select('id', 'name')->get()
-    ->prepend((object)['id' => 0, 'name' => 'Semua Menu']);
+                $this->categories = Category::select('id', 'name')->get();
         } 
     }
 

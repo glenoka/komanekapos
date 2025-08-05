@@ -5,42 +5,50 @@ namespace App\Livewire;
 use App\Models\Product;
 use Livewire\Component;
 use App\Models\Category;
-use Illuminate\Support\Collection;
+use Livewire\WithPagination;
 
 class Pos extends Component
 {
-    public collection $products;
-    public collection $categories;
+    use WithPagination;
+    
+    public $activeCategory= 0; // Default category
+    public $search='';
+     public int | string $perPage = 20;
 
-    public $activeCategory=0;
-    public $searchTerm;
-
-    public function mount(){
-
-        $this->loadProducts();
+    
+   
+    public function updatedSearch($value)
+{
+    if (!empty($value)) {
+        $this->activeCategory = 0; // Otomatis reset kategori saat mencari
     }
-    public function loadProducts(): void
+    $this->resetPage();
+}
+     public function updatedActiveCategory()
     {
-        if (class_exists(Product::class) && Product::count() > 0) {
-            $this->products = Product::query()
-                ->when($this->activeCategory !== 'Semua Menu', fn ($q) => $q->where('category_id', $this->activeCategory))
-                ->when($this->searchTerm, fn ($q) => $q->where('name', 'like', '%' . $this->searchTerm . '%'))
-                ->get();
-
-               // Tambahkan "Semua Menu" ke awal list kategori
-            $allCategories = collect([
-                (object)['id' => 0, 'name' => 'Semua Menu']
-            ]);
-            
-            $this->categories = $allCategories->merge(
-                Category::select('id', 'name')->get()
-            );
-           
-        } 
+        $this->resetPage();
     }
+
+    
 
     public function render()
     {
-        return view('livewire.pos');
+         $products = Product::query()
+            ->when($this->search, fn($q) => $q->search($this->search))
+            ->when($this->activeCategory > 0, function($q) {
+                $q->where('category_id', $this->activeCategory);
+            })
+            ->with('category') // Eager load kategori untuk optimasi
+            ->paginate($this->perPage === 'all' ? Product::count() : $this->perPage);
+    
+$categories = Category::select('id', 'name')->get();
+    $categories->prepend((object)['id' => 0, 'name' => 'All']); // Tambahkan di awal
+        
+
+        return view('livewire.pos',[
+            'products' => $products
+            ,
+            'categories' => $categories,
+        ]);
     }
 }

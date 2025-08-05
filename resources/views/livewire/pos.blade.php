@@ -1,71 +1,94 @@
 <div class="grid grid-cols-1 dark:bg-gray-900 md:grid-cols-3 gap-4">
     <div class="md:col-span-2 bg-white dark:bg-gray-800 shadow-md rounded-lg p-6">
-      
-    <div class="flex gap-4 overflow-x-auto pb-3 px-5 overflow-y-hidden">
-        @foreach ($categories as $category)
-            <div class="relative">
-                <x-filament::button 
-                    wire:click="$set('activeCategory', {{ $category->id }})"
-                    :color="$activeCategory === $category->id ? 'primary' : 'info'"
-                    size="sm"
-                   >
-                    {{ $category->name }}
-                </x-filament::button>
+        <!-- Bagian Kategori + Search -->
+        <div class="flex gap-4 items-center justify-between mb-4">
+            <div class="flex gap-4 overflow-x-auto pb-3 px-5 overflow-y-hidden flex-1">
+                @foreach ($categories as $category)
+                    <div class="relative">
+                        <x-filament::button 
+                            class="whitespace-nowrap mb-2"
+                            wire:click="$set('activeCategory', {{ $category->id }})"
+                            :color="$activeCategory === $category->id ? 'primary' : 'info'"
+                            size="sm"
+                        >
+                            {{ $category->name }}
+                        </x-filament::button>
+                    </div>
+                @endforeach
             </div>
-        @endforeach
-    </div>
-    <div class="flex-grow">
-        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 p-1">
-            @foreach($products as $product)
-            <x-filament::section 
-                class="!p-3 !m-0 cursor-pointer transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 group"
-                wire:click="selectProduct({{ $product->id }})">
-                
-                <div class="space-y-3">
-                    <!-- Icon placeholder -->
-                    <div class="w-full flex justify-center">
-                        <div class="w-10 h-10 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center group-hover:bg-primary-100 dark:group-hover:bg-primary-900/30 transition-colors duration-200">
-                            <x-heroicon-o-cube class="w-5 h-5 text-gray-400 dark:text-gray-500 group-hover:text-primary-500 dark:group-hover:text-primary-400" />
+            
+           
+            
+        </div>
+         <!-- Search Input -->
+        <div class="flex-shrink-0 mb-3">
+                <x-filament::input.wrapper>
+                    <x-filament::input 
+                        type="search" 
+                        wire:model.live.debounce.500ms="search" 
+                        placeholder="Cari produk..." 
+                        icon="heroicon-o-magnifying-glass"
+                        class="h-9 text- mb-3"
+                    />
+                </x-filament::input.wrapper>
+            </div>
+        <!-- Daftar Produk -->
+        <div class="flex-grow mt-3">
+            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 p-1">
+                @foreach($products as $product)
+                <x-filament::section 
+                    class="!p-3 !m-0 cursor-pointer transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 group"
+                    wire:click="selectProduct({{ $product->id }})">
+                    
+                    <div class="space-y-3">
+                        <!-- Icon placeholder -->
+                        <div class="w-full flex justify-center">
+                            <div class="w-10 h-10 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center group-hover:bg-primary-100 dark:group-hover:bg-primary-900/30 transition-colors duration-200">
+                                <x-heroicon-o-cube class="w-5 h-5 text-gray-400 dark:text-gray-500 group-hover:text-primary-500 dark:group-hover:text-primary-400" />
+                            </div>
                         </div>
-                    </div>
-                    
-                    <!-- Product details -->
-                    <div class="text-center space-y-1">
-                        <h3 class="text-sm font-medium text-gray-900 dark:text-white line-clamp-2 group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors duration-200">
-                            {{ $product->name ?? 'Nama Produk' }}
-                        </h3>
                         
-                        <x-filament::badge color="primary" size="sm">
-                            Rp {{ number_format($product->price ?? 10000, 0, ',', '.') }}
-                        </x-filament::badge>
+                        <!-- Product details -->
+                        <div class="text-center space-y-1">
+                            <h3 class="text-sm font-medium text-gray-900 dark:text-white line-clamp-2 group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors duration-200">
+                                {{ $product->name ?? 'Nama Produk' }}
+                            </h3>
+                            
+                            <x-filament::badge color="primary" size="sm">
+                                Rp {{ number_format($product->price ?? 10000, 0, ',', '.') }}
+                            </x-filament::badge>
+                        </div>
+                        
                     </div>
-                    
-                </div>
-            </x-filament::section>
-            @endforeach
+                </x-filament::section>
+                @endforeach
+            </div>
+            
+            <!-- Pagination -->
+            <div class="py-4">
+                <x-filament::pagination
+                    :paginator="$products"
+                    :page-options="[5, 10, 20, 50, 100, 'all']"
+                    :current-page-option-property="$perPage"
+                />
+            </div>
         </div>
     </div>
-    </div>
+    
+    <!-- Sidebar Cart -->
     <div class="md:col-span-1 bg-white dark:bg-gray-800 shadow-md rounded-lg p-6">
-        
         <div class="py-4">
             <h3 class="text-lg font-semibold text-center">Total: Rp 25.0000</h3>
         </div>
         <div class="mb-4">
             <div class="flex justify-between items-center bg-gray-100 dark:bg-gray-700 p-4 rounded-lg shadow">
                 <div class="flex items-center">
-                    {{ $activeCategory  }}
-                    @forelse($products as $product)
-                        <div wire:click="" class="bg-white rounded-xl shadow-md p-3 flex flex-col cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
-                            <img src="{{ $product['image'] ?? 'https://placehold.co/300x300' }}" alt="{{ $product['name'] }}" class="w-full h-24 sm:h-32 object-cover rounded-lg mb-3">
-                            <div class="flex-1 flex flex-col">
-                                <h3 class="font-semibold text-sm text-gray-800 flex-grow">{{ $product['name'] }}</h3>
-                                <p class="text-gray-600 mt-2 font-bold">Rp {{ number_format($product['price'], 0, ',', '.') }}</p>
-                            </div>
-                        </div>
-                    @empty
-                        <p class="text-gray-500 col-span-full text-center py-10">Tidak ada produk yang cocok dengan pencarian Anda.</p>
-                    @endforelse
+                    <img src="https://images.unsplash.com/photo-1464226184884-fa280b87c399?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" alt="Product Image"
+                        class="w-10 h-10 object-cover rounded-lg mr-2">
+                    <div class="px-2">
+                        <h3 class="text-sm font-semibold">Nama</h3>
+                        <p class="text-gray-600 dark:text-gray-400 text-xs">Rp 10.000</p>
+                    </div>
                 </div>
                 <div class="flex items-center">
                     <x-filament::button color="warning">-</x-filament::button>
@@ -73,10 +96,6 @@
                     <x-filament::button color="success">+</x-filament::button>
                 </div>
             </div>
-        </div>
-       
-        <div class="mt-2">
-
         </div>
     </div>
 </div>
