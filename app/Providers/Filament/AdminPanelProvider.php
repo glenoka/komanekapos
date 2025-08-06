@@ -7,6 +7,7 @@ use Filament\Panel;
 use Filament\Widgets;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
+use Filament\Support\Enums\MaxWidth;
 use Filament\Navigation\NavigationItem;
 use Filament\Http\Middleware\Authenticate;
 use Illuminate\Session\Middleware\StartSession;
@@ -29,13 +30,7 @@ class AdminPanelProvider extends PanelProvider
             ->path('admin')
             ->login()
             ->topNavigation()
-            // ->navigationItems([
-            //     NavigationItem::make('POS')
-            //         ->url('/pos', shouldOpenInNewTab: true)
-            //         ->icon('heroicon-o-presentation-chart-line')
-            //         ->group('Point Of Sales')
-            //         ->sort(3),
-            // ])
+            ->maxContentWidth(MaxWidth::Full)
             ->colors([
                 'primary' => Color::Amber,
             ])

@@ -13,20 +13,26 @@ use App\Models\Category;
 use App\Models\Customer;
 use Filament\Forms\Form;
 
+use Filament\Tables\Table;
 use Livewire\WithPagination;
 use Illuminate\Support\HtmlString;
+use Filament\Tables\Columns\Column;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Contracts\HasForms;
+
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Contracts\HasTable;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
-
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Concerns\InteractsWithForms;
+use Filament\Tables\Concerns\InteractsWithTable;
 
-class Pos extends Component implements HasForms
+class Pos extends Component implements HasForms, HasTable
 {
     use InteractsWithForms;
-    use WithPagination;
+    use InteractsWithTable;
+    // use WithPagination;
 
     public $activeCategory = 0; // Default category
     public $search = '';
@@ -117,20 +123,16 @@ class Pos extends Component implements HasForms
             ->send();
     }
 
-    // public function calculateTotal()
-    // {
-    //     $total = 0;
-    //     foreach ($this->order_items as $item) {
-    //         $total += $item['price'] * $item['quantity'];
-    //     }
-    //     $this->total_price = $total;//sebelum pajak 
-    //     $this->grand_total = $total + ($total * $this->tax / 100);
-
-    //     if($this->discount > 0){
-    //         $this->grand_total = $this->grand_total - ($this->grand_total * $this->discount / 100);
-    //     }
-    //     return  $this->grand_total;//sesudah pajak dan diskon 
-    // }
+ public function table(Table $table): Table
+{
+    return $table
+        ->query(Product::query()->limit(5)) // Menambahkan limit(5)
+        ->columns([
+            TextColumn::make('id')->sortable(),
+            TextColumn::make('name')->sortable(),
+            TextColumn::make('price')->sortable(),
+        ]);
+}
     public function form(Form $form): Form
     {
         return $form
