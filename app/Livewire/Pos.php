@@ -14,10 +14,13 @@ use App\Models\Customer;
 use Filament\Forms\Form;
 
 use Livewire\WithPagination;
+use Illuminate\Support\HtmlString;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Contracts\HasForms;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
+
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Concerns\InteractsWithForms;
 
 class Pos extends Component implements HasForms
@@ -27,12 +30,14 @@ class Pos extends Component implements HasForms
 
     public $activeCategory = 0; // Default category
     public $search = '';
-    public int | string $perPage = 20;
-    public $total_price;
+    public int | string $perPage = 10;
+    public $sub_total;
     public $order_items = [];
     public $order_type;
-    public $tax = 21;
+    public $tax = 11;
+    public $tax_amount;
     public $discount = 0;
+    public $discount_amount;
     public $grand_total;
 
 
@@ -103,6 +108,9 @@ class Pos extends Component implements HasForms
         session()->forget('orderItems');
         $this->grand_total=0;
         $this->discount=0;
+        $this->discount_amount=0;
+        $this->sub_total=0;
+        $this->tax_amount=0;
         Notification::make()
             ->title('Cart cleared successfully')
             ->success()
@@ -167,36 +175,36 @@ class Pos extends Component implements HasForms
                 Forms\Components\Section::make('Payment Summary')
                     ->schema([
                      
-                                TextInput::make('subtotal')
+                                TextInput::make('sub_total')
                                     ->label('Subtotal')
                                     ->numeric()
                                     ->prefix('Rp')
                                     ->disabled()
-                                    ->default(fn () => $this->calculateSubtotal())
                                     ->columnSpan(1),
     
+                                   
                                 TextInput::make('discount')
                                     ->label('Discount Amount')
                                     ->numeric()
-                                    ->prefix('Rp')
+                                   ->suffix('%')
                                     ->live()
                                     ->default(0)
-                                    ->hint(fn () => $this->discount > 0 ? 
-                                        'Discount: '.number_format($this->discount, 0, ',', '.').' ('.round(($this->discount/$this->calculateSubtotal())*100, 2).'%)' : 
-                                        'Enter discount amount')
+                                    ->hint(fn () => '- Rp. '.$this->discount_amount)
+                                    ->hintColor('success')
                                     ->hintIcon('heroicon-s-tag')
                                     ->columnSpan(1),
     
-                                TextInput::make('tax_amount')
+                                TextInput::make('tax')
                                     ->label('Tax Amount')
                                     ->numeric()
-                                    ->prefix('Rp')
+                                  ->suffix('%')
+                                  ->readOnly()
                                     ->live()
-                                    ->default(fn () => $this->calculateTax())
-                                    ->hint(fn () => 'Tax Rate: '.$this->tax.'%')
+                                    ->hint(fn () => '+ Rp. '.$this->tax_amount)
+                                    ->hintColor('danger')
                                     ->hintIcon('heroicon-s-receipt-percent')
                                     ->columnSpan(1),
-                            ]),
+                    ]),
     
                         // Grand Total
                         TextInput::make('grand_total')
@@ -214,19 +222,29 @@ class Pos extends Component implements HasForms
     // Helper methods
     public function calculateSubtotal()
     {
-        return collect($this->order_items)->sum(fn ($item) => $item['price'] * $item['quantity']);
+        $total = 0;
+        foreach ($this->order_items as $item) {
+            $total += $item['price'] * $item['quantity'];
+        }
+        $this->sub_total = $total;//sebelum pajak 
+        return $total;
     }
     
     public function calculateTax()
     {
-        return $this->calculateSubtotal() * ($this->tax / 100);
+        return $this->tax_amount= $this->calculateSubtotal() * ($this->tax / 100);
     }
     
     public function calculateTotal()
     {
         $subtotal = $this->calculateSubtotal();
         $tax = $this->calculateTax();
-        return $subtotal + $tax - $this->discount;
+        if($this->discount>0){
+            $this->discount_amount=$this->sub_total*$this->discount/100;
+        }else{
+            $this->discount_amount=0;
+        }
+        return $this->grand_total=$subtotal + $tax - $this->discount_amount;
     }
     public function addToOrder($productId)
     {

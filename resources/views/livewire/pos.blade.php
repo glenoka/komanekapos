@@ -80,8 +80,6 @@
             <div class="mb-4">
                 <div class="flex justify-between items-center bg-gray-100 dark:bg-gray-700 p-4 rounded-lg shadow">
                     <div class="flex items-center">
-                        <img src="https://images.unsplash.com/photo-1464226184884-fa280b87c399?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
-                            alt="Product Image" class="w-10 h-10 object-cover rounded-lg mr-2">
                         <div class="px-2">
                             <h3 class="text-sm font-semibold">{{ $item['name'] }}</h3>
                             <p class="text-gray-600 dark:text-gray-400 text-xs">Rp {{ number_format($item['price'], 0, ',', '.') }}</p>
