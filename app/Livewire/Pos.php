@@ -18,8 +18,10 @@ use Livewire\WithPagination;
 use Illuminate\Support\HtmlString;
 use Filament\Tables\Columns\Column;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Contracts\HasForms;
+use Filament\Forms\Components\Section;
 
+use Filament\Forms\Contracts\HasForms;
+use Filament\Forms\Components\Textarea;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Contracts\HasTable;
 use Filament\Forms\Components\TextInput;
@@ -39,7 +41,7 @@ class Pos extends Component implements HasForms, HasTable
     public int | string $perPage = 10;
     public $sub_total;
     public $order_items = [];
-    public $order_type;
+
     public $tax = 11;
     public $tax_amount;
     public $discount = 0;
@@ -47,15 +49,30 @@ class Pos extends Component implements HasForms, HasTable
     public $grand_total;
 
 
+    public $order_type;
+    public $customer_id;
+    public $table_no;
+    public $activity;
 
-    // Tambahkan property untuk form data
-    public ?array $data = [];
+    // Property untuk paymentForm
+    public $sales_type;
+    public $payment_method;
+    public $notes;
+
+
 
     public function mount(): void
     {
         if (session()->has('orderItems')) {
             $this->order_items = session('orderItems');
         }
+    }
+    protected function getForms(): array
+    {
+        return [
+            'paymentForm',
+            'form'
+        ];
     }
 
     public function updatedSearch($value)
@@ -112,27 +129,27 @@ class Pos extends Component implements HasForms, HasTable
     {
         $this->order_items = [];
         session()->forget('orderItems');
-        $this->grand_total=0;
-        $this->discount=0;
-        $this->discount_amount=0;
-        $this->sub_total=0;
-        $this->tax_amount=0;
+        $this->grand_total = 0;
+        $this->discount = 0;
+        $this->discount_amount = 0;
+        $this->sub_total = 0;
+        $this->tax_amount = 0;
         Notification::make()
             ->title('Cart cleared successfully')
             ->success()
             ->send();
     }
 
- public function table(Table $table): Table
-{
-    return $table
-        ->query(Product::query()->limit(5)) // Menambahkan limit(5)
-        ->columns([
-            TextColumn::make('id')->sortable(),
-            TextColumn::make('name')->sortable(),
-            TextColumn::make('price')->sortable(),
-        ]);
-}
+    public function table(Table $table): Table
+    {
+        return $table
+            ->query(Product::query()->limit(5)) // Menambahkan limit(5)
+            ->columns([
+                TextColumn::make('id')->sortable(),
+                TextColumn::make('name')->sortable(),
+                TextColumn::make('price')->sortable(),
+            ]);
+    }
     public function form(Form $form): Form
     {
         return $form
@@ -153,74 +170,163 @@ class Pos extends Component implements HasForms, HasTable
                                         'other' => 'Other'
                                     ])
                                     ->columnSpan(1),
-    
+
                                 Select::make('tabel_no')
                                     ->label('Table Number')
                                     ->options(range(1, 10))
-                                    ->options(collect(range(1, 10))->mapWithKeys(fn ($num) => [$num => "Table $num"]))
-                                    ->visible(fn (Get $get) => $get('order_type') === 'dine_in')
-                                    ->required(fn (Get $get) => $get('order_type') === 'dine_in')
+                                    ->options(collect(range(1, 10))->mapWithKeys(fn($num) => [$num => "Table $num"]))
+                                    ->visible(fn(Get $get) => $get('order_type') === 'dine_in')
+                                    ->required(fn(Get $get) => $get('order_type') === 'dine_in')
                                     ->columnSpan(1),
                             ]),
-    
+                        Select::make('activity')
+                            ->label('Activity')
+                            ->options([
+                                'breakfast' => 'Breakfast',
+                                'lunch' => 'Lunch',
+                                'dinner' => 'Dinner',
+                                'afternoon_tea' => 'Afternoon Tea'
+                            ]),
                         Select::make('customer_id')
                             ->label('Customer')
-                      ->options(Customer::pluck('name','id'))
+                            ->options(Customer::pluck('name', 'id'))
                             ->searchable()
                             ->preload()
-                           
                             ->required()
                             ->columnSpanFull(),
                     ]),
-    
+
                 // Payment Summary Section
                 Forms\Components\Section::make('Payment Summary')
                     ->schema([
-                     
-                                TextInput::make('sub_total')
-                                    ->label('Subtotal')
-                                    ->numeric()
-                                    ->prefix('Rp')
-                                    ->disabled()
-                                    ->columnSpan(1),
-    
-                                   
-                                TextInput::make('discount')
-                                    ->label('Discount Amount')
-                                    ->numeric()
-                                   ->suffix('%')
-                                    ->live()
-                                    ->default(0)
-                                    ->hint(fn () => '- Rp. '.$this->discount_amount)
-                                    ->hintColor('success')
-                                    ->hintIcon('heroicon-s-tag')
-                                    ->columnSpan(1),
-    
-                                TextInput::make('tax')
-                                    ->label('Tax Amount')
-                                    ->numeric()
-                                  ->suffix('%')
-                                  ->readOnly()
-                                    ->live()
-                                    ->hint(fn () => '+ Rp. '.$this->tax_amount)
-                                    ->hintColor('danger')
-                                    ->hintIcon('heroicon-s-receipt-percent')
-                                    ->columnSpan(1),
-                    ]),
-    
-                        // Grand Total
-                        TextInput::make('grand_total')
-                            ->label('Grand Total')
+
+                        TextInput::make('sub_total')
+                            ->label('Subtotal')
                             ->numeric()
                             ->prefix('Rp')
                             ->disabled()
-                            ->default(fn () => $this->calculateTotal())
-                            ->extraAttributes(['class' => 'font-bold text-lg'])
-                            ->columnSpanFull(),
-                        ]);
-            
+                            ->columnSpan(1),
+
+
+                        TextInput::make('discount')
+                            ->label('Discount Amount')
+                            ->numeric()
+                            ->suffix('%')
+                            ->live()
+                            ->default(0)
+                            ->hint(fn() => '- Rp. ' . $this->discount_amount)
+                            ->hintColor('success')
+                            ->hintIcon('heroicon-s-tag')
+                            ->columnSpan(1),
+
+                        TextInput::make('tax')
+                            ->label('Tax Amount')
+                            ->numeric()
+                            ->suffix('%')
+                            ->readOnly()
+                            ->live()
+                            ->hint(fn() => '+ Rp. ' . $this->tax_amount)
+                            ->hintColor('danger')
+                            ->hintIcon('heroicon-s-receipt-percent')
+                            ->columnSpan(1),
+                    ]),
+
+                // Grand Total
+                TextInput::make('grand_total')
+                    ->label('Grand Total')
+                    ->numeric()
+                    ->prefix('Rp')
+                    ->disabled()
+                    ->default(fn() => $this->calculateTotal())
+                    ->extraAttributes(['class' => 'font-bold text-lg'])
+                    ->columnSpanFull(),
+            ]);
     }
-    
+
+
+    public function paymentForm(Form $form): Form
+    {
+        return $form
+          
+            ->schema([
+                // Sales Type Section
+                Section::make('Transaction Details')
+                    ->description('Configure transaction type and payment method')
+                    ->schema([
+                        Select::make('sales_type')
+                            ->label('Sales Type')
+                            ->required()
+                            ->live()
+                            ->searchable()
+                            ->preload()
+                            ->placeholder('Select sales type...')
+                            ->options([
+                                'regular' => 'Regular Sale',
+                                'complimentary' => 'Complimentary',
+                                'owner_guest' => 'Owner Guest',
+                                'staff_meal' => 'Staff Meal',
+                                'vip_guest' => 'VIP Guest',
+                                'business_entertainment' => 'Business Entertainment',
+                                'banquet/wedding' => 'Banquet/Wedding',
+                            ])
+
+                            ->native(false)
+                            ->suffixIcon('heroicon-o-tag')
+                            ->columnSpanFull(),
+
+                        Select::make('payment_method')
+                            ->label('Payment Method')
+                            ->required()
+                            ->searchable()
+                            ->preload()
+                            ->placeholder('Select payment method...')
+                            ->options([
+                                'cash' => 'Cash',
+                                'card' => 'Credit/Debit Card',
+                                'room_charge' => 'Room Charge',
+                                'complimentary' => 'Complimentary',
+                                'qris' => 'QRIS',
+
+                            ])
+                            ->native(false)
+                            ->suffixIcon('heroicon-o-credit-card')
+                            ->reactive()
+                            ->afterStateUpdated(
+                                fn(callable $set, $state) =>
+                                $state === 'complimentary'
+                                    ? $set('sales_type', 'complimentary')
+                                    : null
+                            )
+                            ->columnSpanFull(),
+                    ])
+                    ->columns(2)
+                    ->collapsible()
+                    ->persistCollapsed(),
+
+                // Payment Details Section (conditional based on payment method)
+
+                Section::make('Additional Information')
+                    ->description('Optional notes and comments')
+                    ->schema([
+                        Textarea::make('notes')
+                            ->label('Notes')
+                            ->live()
+                            ->placeholder('Add any special notes or instructions...')
+                            ->rows(3)
+                            ->required(fn(Get $get) => $get('sales_type') === 'complimentary')
+                            ->maxLength(500)
+                            ->columnSpanFull(),
+
+
+                    ])
+                    ->collapsible()
+                    ->persistCollapsed()
+                    ->collapsed(),
+
+            ])
+            ->columns(1);
+    }
+
     // Helper methods
     public function calculateSubtotal()
     {
@@ -228,25 +334,25 @@ class Pos extends Component implements HasForms, HasTable
         foreach ($this->order_items as $item) {
             $total += $item['price'] * $item['quantity'];
         }
-        $this->sub_total = $total;//sebelum pajak 
+        $this->sub_total = $total; //sebelum pajak 
         return $total;
     }
-    
+
     public function calculateTax()
     {
-        return $this->tax_amount= $this->calculateSubtotal() * ($this->tax / 100);
+        return $this->tax_amount = $this->calculateSubtotal() * ($this->tax / 100);
     }
-    
+
     public function calculateTotal()
     {
         $subtotal = $this->calculateSubtotal();
         $tax = $this->calculateTax();
-        if($this->discount>0){
-            $this->discount_amount=$this->sub_total*$this->discount/100;
-        }else{
-            $this->discount_amount=0;
+        if ($this->discount > 0) {
+            $this->discount_amount = $this->sub_total * $this->discount / 100;
+        } else {
+            $this->discount_amount = 0;
         }
-        return $this->grand_total=$subtotal + $tax - $this->discount_amount;
+        return $this->grand_total = $subtotal + $tax - $this->discount_amount;
     }
     public function addToOrder($productId)
     {
@@ -283,7 +389,29 @@ class Pos extends Component implements HasForms, HasTable
         $this->order_items = $orderItems;
         session()->put('orderItems', $this->order_items);
     }
+    public function processPayment()
+    {
+        // Validasi form utama
+        $orderData = $this->validate([
+            'order_type' => 'required',
+            'customer_id' => 'required',
+            'table_no' => 'required_if:order_type,dine_in'
+        ]);
 
+        // Validasi payment form
+        $paymentData = $this->validate([
+            'sales_type' => 'required',
+            'payment_method' => 'required',
+            'notes' => 'required_if:sales_type,complimentary'
+        ]);
+
+        // Gabungkan semua data
+        $allData = array_merge($orderData, $paymentData);
+
+        // Proses data
+        dd($allData); // Sekarang akan bekerja
+
+    }
 
 
     public function render()

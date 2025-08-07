@@ -15,6 +15,7 @@ class Sales extends Model
         'table_no',
         'sales_type',
         'order_type',
+    'activity',
         'subtotal',
         'tax_amount',
         'discount_amount',

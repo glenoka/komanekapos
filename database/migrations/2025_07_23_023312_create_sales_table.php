@@ -16,7 +16,7 @@ return new class extends Migration
             $table->string('invoice_number')->unique();
             $table->foreignId('customer_id')->nullable()->constrained('customers')->onDelete('set null');
             $table->datetime('sale_date');
-            $table->string('table_no');
+            $table->string('table_no')->nullable();
             $table->enum('sales_type', [
                 'regular',
                 'complimentary',     // Free/complimentary
@@ -39,7 +39,7 @@ return new class extends Migration
             $table->integer('total_items');
          
             $table->json('payment_details')->nullable(); // untuk multiple payment methods
-            
+            $table->enum('activity', ['breakfast', 'lunch', 'dinner', 'afternoontea']);
             // Status
             $table->enum('status', ['completed', 'pending', 'cancelled', 'refunded'])->default('pending');
                 
