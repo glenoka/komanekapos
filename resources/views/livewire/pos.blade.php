@@ -215,50 +215,51 @@
                                 </h3>
                             </div>
                         </div>
-                       <div class="w-full bg-white dark:bg-gray-800 rounded-lg shadow-sm dark:shadow-gray-700/50">
-  <!-- Cart Header with Toggle -->
-  <div class="bg-gray-50 dark:bg-gray-700 px-4 py-3 border-b border-gray-200 dark:border-gray-600 flex justify-between items-center">
-    <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Your Order</h2>
-    <div class="flex items-center">
-      <span class="text-sm text-gray-500 dark:text-gray-400 mr-2">{{ count($order_items) }} items</span>
-    </div>
-  </div>
-
-  <!-- Cart Items - Simplified -->
-  <div x-data="{ collapsed: false }" x-show="!collapsed" class="divide-y divide-gray-100 dark:divide-gray-700">
-    @foreach($order_items as $index => $item)
-    <div class="px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700">
-      <div class="flex justify-between items-baseline">
-        <div class="flex-1">
-          <span class="text-gray-500 dark:text-gray-400 mr-2">{{ $index + 1 }}.</span>
-          <span class="font-medium text-gray-900 dark:text-white">{{ $item['name'] }}</span>
-          <span class="text-gray-500 dark:text-gray-400 ml-2">x {{ $item['quantity'] }}</span>
-        </div>
-        <div class="text-right">
-          <span class="font-medium text-gray-900 dark:text-white">Rp {{ number_format($item['price'] * $item['quantity'], 0, ',', '.') }}</span>
-        </div>
-      </div>
-    </div>
-    @endforeach
-  </div>
-
-  <!-- Order Summary - Always Visible -->
-  <div class="bg-gray-50 dark:bg-gray-700 px-4 py-3 border-t border-gray-200 dark:border-gray-600">
-    <div class="grid grid-cols-2 gap-y-1 text-sm">
-      <div class="text-gray-600 dark:text-white">Subtotal:</div>
-      <div class="text-right font-medium text-gray-900 dark:text-white">Rp {{ number_format($this->calculateSubtotal(), 0, ',', '.') }}</div>
-      
-      <div class="text-gray-600 dark:text-white">Tax ({{ $tax }}%):</div>
-      <div class="text-right font-medium text-gray-900 dark:text-white">Rp {{ number_format($this->calculateTax(), 0, ',', '.') }}</div>
-      
-      <div class="text-gray-600 dark:text-white">Discount:</div>
-      <div class="text-right font-medium text-green-600 dark:text-green-400">- Rp {{ number_format($this->discount_amount, 0, ',', '.') }}</div>
-      
-      <div class="text-gray-800 dark:text-white font-semibold mt-1">Total:</div>
-      <div class="text-right font-bold text-lg text-gray-900 dark:text-white">Rp {{ number_format($this->calculateTotal(), 0, ',', '.') }}</div>
-    </div>
-  </div>
-</div>
+                        <div class="w-full bg-white rounded-lg shadow-sm">
+                            <!-- Cart Header with Toggle -->
+                            <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex justify-between items-center">
+                              <h2 class="text-lg font-semibold">Your Order</h2>
+                              <div class="flex items-center">
+                                <span class="text-sm text-gray-500 mr-2">{{ count($order_items) }} items</span>
+                               
+                              </div>
+                            </div>
+                          
+                            <!-- Cart Items - Simplified -->
+                            <div x-data="{ collapsed: false }" x-show="!collapsed" class="divide-y divide-gray-100">
+                              @foreach($order_items as $index => $item)
+                              <div class="px-4 py-3 hover:bg-gray-50">
+                                <div class="flex justify-between items-baseline">
+                                  <div class="flex-1">
+                                    <span class="text-gray-500 mr-2">{{ $index + 1 }}.</span>
+                                    <span class="font-medium">{{ $item['name'] }}</span>
+                                    <span class="text-gray-500 ml-2">x {{ $item['quantity'] }}</span>
+                                  </div>
+                                  <div class="text-right">
+                                    <span class="font-medium">Rp {{ number_format($item['price'] * $item['quantity'], 0, ',', '.') }}</span>
+                                  </div>
+                                </div>
+                              </div>
+                              @endforeach
+                            </div>
+                          
+                            <!-- Order Summary - Always Visible -->
+                            <div class="bg-gray-50 px-4 py-3 border-t border-gray-200">
+                              <div class="grid grid-cols-2 gap-y-1 text-sm">
+                                <div class="text-gray-600">Subtotal:</div>
+                                <div class="text-right font-medium">Rp {{ number_format($this->calculateSubtotal(), 0, ',', '.') }}</div>
+                                
+                                <div class="text-gray-600">Tax ({{ $tax }}%):</div>
+                                <div class="text-right font-medium">Rp {{ number_format($this->calculateTax(), 0, ',', '.') }}</div>
+                                
+                                <div class="text-gray-600">Discount:</div>
+                                <div class="text-right font-medium text-green-600">- Rp {{ number_format($this->discount_amount, 0, ',', '.') }}</div>
+                                
+                                <div class="text-gray-800 font-semibold mt-1">Total:</div>
+                                <div class="text-right font-bold text-lg">Rp {{ number_format($this->calculateTotal(), 0, ',', '.') }}</div>
+                              </div>
+                            </div>
+                          </div>
                           
                         
                           <form wire:submit="processPayment">

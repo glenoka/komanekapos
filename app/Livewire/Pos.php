@@ -54,7 +54,7 @@ class Pos extends Component implements HasForms, HasTable
 
     public $order_type;
     public $customer_id;
-    public $table_no;
+    public $number_table;
     public $activity;
 
     // Property untuk paymentForm
@@ -137,6 +137,7 @@ class Pos extends Component implements HasForms, HasTable
         $this->discount_amount = 0;
         $this->sub_total = 0;
         $this->tax_amount = 0;
+
         Notification::make()
             ->title('Cart cleared successfully')
             ->success()
@@ -169,15 +170,20 @@ class Pos extends Component implements HasForms, HasTable
                                     ->options([
                                         'dine_in' => 'Dine In',
                                         'room_service' => 'Room Service',
-                                        'take_away' => 'Take Away',
+                                        'takeaway' => 'Take Away',
                                         'other' => 'Other'
                                     ])
                                     ->columnSpan(1),
 
-                                Select::make('tabel_no')
+                                Select::make('number_table')
                                     ->label('Table Number')
-                                    ->options(range(1, 10))
-                                    ->options(collect(range(1, 10))->mapWithKeys(fn($num) => [$num => "Table $num"]))
+                                    ->options([
+                                        //create tabel 1-21
+                                        '1' => '1',
+                                        '2' => '2',
+                                        '3' => '3',
+                                        '4' => '4',
+                                    ])
                                     ->visible(fn(Get $get) => $get('order_type') === 'dine_in')
                                     ->required(fn(Get $get) => $get('order_type') === 'dine_in')
                                     ->columnSpan(1),
@@ -313,7 +319,7 @@ class Pos extends Component implements HasForms, HasTable
                     ->schema([
                         Textarea::make('notes')
                             ->label('Notes')
-                            ->live()
+                          
                             ->placeholder('Add any special notes or instructions...')
                             ->rows(3)
                             ->required(fn(Get $get) => $get('sales_type') === 'complimentary')
@@ -381,7 +387,7 @@ class Pos extends Component implements HasForms, HasTable
         }
 
         session()->put('orderItems', $this->order_items);
-        Notification::make('addToOrder')
+        Notification::make('addToOrder_' . now()->timestamp)
             ->title('Add item Success')
             ->success()
             ->send();
@@ -394,12 +400,8 @@ class Pos extends Component implements HasForms, HasTable
     }
     public function processPayment()
     {
-        // Validasi form utama
-        $orderData = $this->validate([
-            'order_type' => 'required',
-            'customer_id' => 'required',
-            'table_no' => 'required_if:order_type,dine_in'
-        ]);
+     
+       
 
         // Validasi payment form
         $paymentData = $this->validate([
@@ -408,26 +410,39 @@ class Pos extends Component implements HasForms, HasTable
             'notes' => 'required_if:sales_type,complimentary'
         ]);
 
-        // Gabungkan semua data
-        $allData = array_merge($orderData, $paymentData);
-
-        // Proses data
+        // $dataTest=[
+        //     'customer_id' => $this->customer_id,
+        //     'sale_date' => now(),
+        //     'table_no' => $this->number_table,
+        //     'sales_type' => $this->sales_type,
+        //     'order_type' => $this->order_type,
+        //     'subtotal' => $this->sub_total,
+        //     'tax_amount' => $this->tax_amount,
+        //     'discount_amount' => $this->discount_amount,
+        //     'total_amount' => $this->grand_total,
+        //     'payment_method' => $this->payment_method,
+        //     'total_items' => count($this->order_items),
+        //     'status' => 'completed',
+        //     'user_id' => Auth::user()->id,
+        //     'notes' => $this->notes,
+        // ];
+        // dd($dataTest);
        
         $sales = Sales::create([
-            'customer_id' => $allData['customer_id'],
+            'customer_id' => $this->customer_id,
             'sale_date' => now(),
-            'table_no' => $allData['table_no'],
-            'sales_type' => $allData['sales_type'],
-            'order_type' => $allData['order_type'],
+            'table_no' => $this->number_table,
+            'sales_type' => $this->sales_type,
+            'order_type' => $this->order_type,
             'subtotal' => $this->sub_total,
             'tax_amount' => $this->tax_amount,
             'discount_amount' => $this->discount_amount,
             'total_amount' => $this->grand_total,
-            'payment_method' => $allData['payment_method'],
+            'payment_method' => $this->payment_method,
             'total_items' => count($this->order_items),
             'status' => 'completed',
             'user_id' => Auth::user()->id,
-            'notes' => $allData['notes'],
+            'notes' => $this->notes,
         ]);
 
         foreach ($this->order_items as $item) {
@@ -444,10 +459,25 @@ class Pos extends Component implements HasForms, HasTable
                 'is_complimentary' => false,
             ]);
         }
+     
+        Notification::make('payment')
+            ->title('Paymanet Success')
+            ->success()
+            ->send();
 
-        Notification::make()
-        ->success()
-        ->title('Successfuly');
+        $this->order_items = [];
+        $this->sub_total = 0;
+        $this->tax_amount = 0;
+        $this->discount_amount = 0;
+        $this->grand_total = 0;
+       
+     $this->order_type='';
+     $this->customer_id='';
+     $this->number_table='';
+     $this->activity='';      
+       
+
+       
     }
 
 
