@@ -11,6 +11,8 @@ use Filament\Forms\Set;
 use Livewire\Component;
 use App\Models\Category;
 use App\Models\Customer;
+use App\Models\Sales;
+use App\Models\SalesDetail;
 use Filament\Forms\Form;
 
 use Filament\Tables\Table;
@@ -29,6 +31,7 @@ use Filament\Notifications\Notification;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Tables\Concerns\InteractsWithTable;
+use Illuminate\Support\Facades\Auth;
 
 class Pos extends Component implements HasForms, HasTable
 {
@@ -247,7 +250,7 @@ class Pos extends Component implements HasForms, HasTable
     public function paymentForm(Form $form): Form
     {
         return $form
-          
+
             ->schema([
                 // Sales Type Section
                 Section::make('Transaction Details')
@@ -409,8 +412,42 @@ class Pos extends Component implements HasForms, HasTable
         $allData = array_merge($orderData, $paymentData);
 
         // Proses data
-        dd($allData); // Sekarang akan bekerja
+       
+        $sales = Sales::create([
+            'customer_id' => $allData['customer_id'],
+            'sale_date' => now(),
+            'table_no' => $allData['table_no'],
+            'sales_type' => $allData['sales_type'],
+            'order_type' => $allData['order_type'],
+            'subtotal' => $this->sub_total,
+            'tax_amount' => $this->tax_amount,
+            'discount_amount' => $this->discount_amount,
+            'total_amount' => $this->grand_total,
+            'payment_method' => $allData['payment_method'],
+            'total_items' => count($this->order_items),
+            'status' => 'completed',
+            'user_id' => Auth::user()->id,
+            'notes' => $allData['notes'],
+        ]);
 
+        foreach ($this->order_items as $item) {
+
+            $detailSales = SalesDetail::create([
+                'sale_id' => $sales->id,
+                'product_id' => $item['product_id'],
+                'product_name' => $item['name'],
+                'quantity' => $item['quantity'],
+                'unit_price' => $item['price'],
+                'original_price' => $item['price'],
+                'discount_amount' => 0,
+                'total_price' => $item['price'] * $item['quantity'],
+                'is_complimentary' => false,
+            ]);
+        }
+
+        Notification::make()
+        ->success()
+        ->title('Successfuly');
     }
 
 

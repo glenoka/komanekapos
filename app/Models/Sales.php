@@ -39,6 +39,10 @@ class Sales extends Model
                 $model->slug = Str::random(10);
             } while (static::where('slug', $model->slug)->exists());
         });
+        
+         static::creating(function ($model) {
+        $model->invoice_number = 'KBM-' . Str::uuid()->toString();
+    });
     }
      public function getRouteKeyName()
     {
