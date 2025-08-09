@@ -4,39 +4,45 @@ namespace App\Livewire;
 
 use Log;
 use Filament\Forms;
+use App\Models\Sales;
 use App\Models\Product;
 use Filament\Forms\Get;
-use Filament\Forms\Set;
 
+use Filament\Forms\Set;
 use Livewire\Component;
 use App\Models\Category;
 use App\Models\Customer;
-use App\Models\Sales;
-use App\Models\SalesDetail;
 use Filament\Forms\Form;
-
 use Filament\Tables\Table;
+use App\Models\SalesDetail;
+
+use Filament\Actions\Action;
+
 use Livewire\WithPagination;
 use Illuminate\Support\HtmlString;
 use Filament\Tables\Columns\Column;
+use Illuminate\Support\Facades\Auth;
+use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\Section;
 
+use Filament\Forms\Components\Section;
 use Filament\Forms\Contracts\HasForms;
 use Filament\Forms\Components\Textarea;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Contracts\HasTable;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
+use Filament\Actions\Contracts\HasActions;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Tables\Concerns\InteractsWithTable;
-use Illuminate\Support\Facades\Auth;
+use Filament\Actions\Concerns\InteractsWithActions;
 
-class Pos extends Component implements HasForms, HasTable
+class Pos extends Component implements HasForms, HasTable , HasActions
 {
     use InteractsWithForms;
     use InteractsWithTable;
+    use InteractsWithActions;
     // use WithPagination;
 
     public $activeCategory = 0; // Default category
@@ -45,7 +51,7 @@ class Pos extends Component implements HasForms, HasTable
     public $sub_total;
     public $order_items = [];
 
-    public $tax = 11;
+    public $tax = 0;
     public $tax_amount;
     public $discount = 0;
     public $discount_amount;
@@ -69,6 +75,8 @@ class Pos extends Component implements HasForms, HasTable
         if (session()->has('orderItems')) {
             $this->order_items = session('orderItems');
         }
+        //dd($this->order_items);
+             
     }
     protected function getForms(): array
     {
@@ -97,36 +105,7 @@ class Pos extends Component implements HasForms, HasTable
     }
 
 
-    public function increaseQuantity($productId)
-    {
-        $product = Product::find($productId);
-
-        foreach ($this->order_items as $key => $item) {
-            if ($item['product_id'] == $product->id) {
-                $this->order_items[$key]['quantity']++;
-            }
-        }
-        session()->put('orderItems', $this->order_items);
-    }
-
-    public function decreaseQuantity($productId)
-    {
-        $product = Product::find($productId);
-
-        foreach ($this->order_items as $key => $item) {
-            if ($item['product_id'] == $product->id) {
-                if ($this->order_items[$key]['quantity'] > 1) {
-
-                    $this->order_items[$key]['quantity']--;
-                } else {
-                    unset($this->order_items[$key]);
-                    $this->order_items = array_values($this->order_items);
-                }
-                break;
-            }
-        }
-        session()->put('orderItems', $this->order_items);
-    }
+    
 
     public function clearOrder()
     {
@@ -319,7 +298,7 @@ class Pos extends Component implements HasForms, HasTable
                     ->schema([
                         Textarea::make('notes')
                             ->label('Notes')
-                          
+
                             ->placeholder('Add any special notes or instructions...')
                             ->rows(3)
                             ->required(fn(Get $get) => $get('sales_type') === 'complimentary')
@@ -335,13 +314,46 @@ class Pos extends Component implements HasForms, HasTable
             ])
             ->columns(1);
     }
+public function increaseQuantity($productId)
+    {
+        $product = Product::find($productId);
 
+        foreach ($this->order_items as $key => $item) {
+            if ($item['product_id'] == $product->id) {
+                $this->order_items[$key]['quantity']++;
+                $this->order_items[$key]['price']=$this->order_items[$key]['unit_price']*$this->order_items[$key]['quantity'];
+                 $this->order_items[$key]['final_price']= $this->order_items[$key]['price'];
+            }
+        }
+        session()->put('orderItems', $this->order_items);
+    }
+
+    public function decreaseQuantity($productId)
+    {
+        $product = Product::find($productId);
+
+        foreach ($this->order_items as $key => $item) {
+            if ($item['product_id'] == $product->id) {
+                if ($this->order_items[$key]['quantity'] > 1) {
+
+                    $this->order_items[$key]['quantity']--;
+                     $this->order_items[$key]['price']=$this->order_items[$key]['unit_price']*$this->order_items[$key]['quantity'];
+                 $this->order_items[$key]['final_price']= $this->order_items[$key]['price'];
+                } else {
+                    unset($this->order_items[$key]);
+                    $this->order_items = array_values($this->order_items);
+                }
+                break;
+            }
+        }
+        session()->put('orderItems', $this->order_items);
+    }
     // Helper methods
     public function calculateSubtotal()
     {
         $total = 0;
         foreach ($this->order_items as $item) {
-            $total += $item['price'] * $item['quantity'];
+            $total += $item['final_price'] ;
         }
         $this->sub_total = $total; //sebelum pajak 
         return $total;
@@ -381,7 +393,11 @@ class Pos extends Component implements HasForms, HasTable
             $this->order_items[] = [
                 'product_id' => $product->id,
                 'name' => $product->name,
-                'price' => $product->price,
+                'unit_price' => $product->price,
+                'price'=>$product->price, //karena qty masih 1 
+                'discount'=>0, //karena belum di isi 
+                'discount_amount' => 0,
+                'final_price' => $product->price,//karena belum ada diskon
                 'quantity' => 1,
             ];
         }
@@ -393,6 +409,60 @@ class Pos extends Component implements HasForms, HasTable
             ->send();
     }
 
+ public function discountItem(): Action
+    {
+        
+        return Action::make('discountItem')
+            ->label('Beri Diskon')
+            ->icon('heroicon-o-receipt-percent')
+        ->color('info')
+        ->size('xs')
+        ->iconButton()
+            ->requiresConfirmation()
+            ->modalHeading('Konfirmasi Diskon')
+            ->modalDescription('Yakin ingin memberikan diskon pada produk ini?')
+            ->modalSubmitActionLabel('Ya, Beri Diskon')
+            ->tooltip('Beri Diskon')
+        ->form([
+            TextInput::make('discount_percentage')
+                ->label('Diskon (%)')
+                ->numeric()
+                ->required()
+                ->suffix('%')
+                ->minValue(0)
+                ->maxValue(100)
+                ->step(0.01)
+                ->default(10)
+                ->helperText('Masukkan persentase diskon (0-100)'),
+        ])
+            ->action(function (array $data, array $arguments) {
+            // $arguments berisi parameter yang dikirim
+            $productId = $arguments['product_id'];
+            $itemIndex = $arguments['item_index'] ?? null;
+            
+            $this->recalculateItemPrice($itemIndex,$data['discount_percentage']);
+        });
+    }
+
+   
+
+
+
+    //check untuk discount
+    public function recalculateItemPrice($itemIndex, $discount)
+    {
+        $item = $this->order_items[$itemIndex];
+      
+        
+        $discountAmount = $item['price'] * ($discount / 100);
+       
+        $this->order_items[$itemIndex]['discount_amount'] = $discountAmount;
+        $this->order_items[$itemIndex]['discount']=$discount;
+        $this->order_items[$itemIndex]['final_price'] = $item['price'] - $discountAmount;
+        session()->put('orderItems', $this->order_items);
+    
+      
+    }
     public function loadOrderItem($orderItems)
     {
         $this->order_items = $orderItems;
@@ -400,8 +470,8 @@ class Pos extends Component implements HasForms, HasTable
     }
     public function processPayment()
     {
-     
-       
+
+
 
         // Validasi payment form
         $paymentData = $this->validate([
@@ -427,7 +497,7 @@ class Pos extends Component implements HasForms, HasTable
         //     'notes' => $this->notes,
         // ];
         // dd($dataTest);
-       
+
         $sales = Sales::create([
             'customer_id' => $this->customer_id,
             'sale_date' => now(),
@@ -455,11 +525,11 @@ class Pos extends Component implements HasForms, HasTable
                 'unit_price' => $item['price'],
                 'original_price' => $item['price'],
                 'discount_amount' => 0,
-                'total_price' => $item['price'] * $item['quantity'],
+                'total_price' => $item['final_price'],//yang sudah di kurangi diskon jika ada
                 'is_complimentary' => false,
             ]);
         }
-     
+
         Notification::make('payment')
             ->title('Paymanet Success')
             ->success()
@@ -470,14 +540,11 @@ class Pos extends Component implements HasForms, HasTable
         $this->tax_amount = 0;
         $this->discount_amount = 0;
         $this->grand_total = 0;
-       
-     $this->order_type='';
-     $this->customer_id='';
-     $this->number_table='';
-     $this->activity='';      
-       
 
-       
+        $this->order_type = '';
+        $this->customer_id = '';
+        $this->number_table = '';
+        $this->activity = '';
     }
 
 
