@@ -391,6 +391,8 @@ public function increaseQuantity($productId)
 
         if ($existingItemkey !== null) {
             $this->order_items[$existingItemkey]['quantity']++;
+        
+            $this->order_items[$existingItemkey]['price']= $this->order_items[$existingItemkey]['unit_price']*$this->order_items[$existingItemkey]['quantity'];
         } else {
             $this->order_items[] = [
                 'product_id' => $product->id,
