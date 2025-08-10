@@ -323,6 +323,7 @@ public function increaseQuantity($productId)
                 $this->order_items[$key]['quantity']++;
                 $this->order_items[$key]['price']=$this->order_items[$key]['unit_price']*$this->order_items[$key]['quantity'];
                  $this->order_items[$key]['final_price']= $this->order_items[$key]['price'];
+                 $this->recalculateItemPrice($key,$this->order_items[$key]['discount']);
             }
         }
         session()->put('orderItems', $this->order_items);
@@ -339,6 +340,7 @@ public function increaseQuantity($productId)
                     $this->order_items[$key]['quantity']--;
                      $this->order_items[$key]['price']=$this->order_items[$key]['unit_price']*$this->order_items[$key]['quantity'];
                  $this->order_items[$key]['final_price']= $this->order_items[$key]['price'];
+                 $this->recalculateItemPrice($key,$this->order_items[$key]['discount']);
                 } else {
                     unset($this->order_items[$key]);
                     $this->order_items = array_values($this->order_items);
@@ -522,9 +524,9 @@ public function increaseQuantity($productId)
                 'product_id' => $item['product_id'],
                 'product_name' => $item['name'],
                 'quantity' => $item['quantity'],
-                'unit_price' => $item['price'],
+                'unit_price' => $item['unit_price'],
                 'original_price' => $item['price'],
-                'discount_amount' => 0,
+                'discount_amount' => $item['discount_amount'],
                 'total_price' => $item['final_price'],//yang sudah di kurangi diskon jika ada
                 'is_complimentary' => false,
             ]);

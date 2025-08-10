@@ -25,50 +25,37 @@
         </div>
 
         <!-- Daftar Produk -->
-        <div class="flex-grow mt-3">
+       
             <div class="flex-grow mt-3">
-                <!-- Ubah class grid dari grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 -->
-                <!-- Menjadi grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 -->
-                <div class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-3 p-1">
+                <!-- Grid jadi 5 kolom di layar besar -->
+                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+
                     @foreach ($products as $product)
-                    <x-filament::section
-                        class="!p-4 !m-0 cursor-pointer transition-all duration-300 hover:shadow-lg hover:-translate-y-1 hover:scale-105 group border-2 border-transparent hover:border-primary-200 dark:hover:border-primary-700"
-                        wire:click="addToOrder({{ $product->id }})">
-
-                        <div class="space-y-3">
-                            <!-- Icon placeholder -->
-                            <div class="w-full flex justify-center">
-                                <div
-                                    class="w-14 h-14 bg-primary-50 dark:bg-primary-900/20 rounded-xl flex items-center justify-center group-hover:bg-primary-100 dark:group-hover:bg-primary-900/40 transition-all duration-300 group-hover:rotate-3 group-hover:scale-110">
-                                    <x-heroicon-o-cube
-                                        class="w-7 h-7 text-primary-600 dark:text-primary-400 group-hover:text-primary-700 dark:group-hover:text-primary-300 transition-colors duration-300" />
-                                </div>
-                            </div>
-
-                            <!-- Product details -->
-                            <div class="text-center space-y-2">
-                                <h3
-                                    class="text-sm font-medium text-gray-900 dark:text-white line-clamp-2 group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors duration-300 leading-tight">
+                    
+                        <x-filament::section
+                            class="!p-3 !m-0 cursor-pointer transition-all duration-300 hover:shadow-lg hover:-translate-y-1 hover:scale-105 group border border-gray-200"
+                            wire:click="addToOrder({{ $product->id }})">
+                
+                            <div class="space-y-2 text-center">
+                                <h3 class="text-sm font-medium text-gray-900 dark:text-white line-clamp-2">
                                     {{ $product->name ?? 'Nama Produk' }}
                                 </h3>
-
-                                <x-filament::badge color="success" size="sm"
-                                    class="font-semibold group-hover:scale-105 transition-transform duration-200">
+                                <x-filament::badge color="success" size="sm">
                                     Rp {{ number_format($product->price ?? 10000, 0, ',', '.') }}
                                 </x-filament::badge>
                             </div>
-                        </div>
-                    </x-filament::section>
+                        </x-filament::section>
                     @endforeach
                 </div>
-
+                
             </div>
-
+        
             <!-- Pagination -->
             <div class="py-4">
                 <x-filament::pagination :paginator="$products" :page-options="[5, 10, 20, 50, 100]" extreme-links :current-page-option-property="$perPage" />
             </div>
-        </div>
+       
+        
     </div>
 
     <!-- Sidebar Cart -->
@@ -117,7 +104,7 @@
             </div>
         </div>
         @endif
-
+       
         <!-- Cart Items -->
         <div class="space-y-3 max-h-80 overflow-y-auto">
             @forelse ($order_items as $index => $item)
@@ -243,8 +230,27 @@
                                         <span class="text-gray-500 ml-2">x {{ $item['quantity'] }}</span>
                                     </div>
                                     <div class="text-right">
-                                        
-                                        <span class="font-medium">Rp {{ number_format($item['unit_price'] * $item['quantity'], 0, ',', '.') }}</span>
+                                       @if($item['discount'] != 0)
+    <div class="flex flex-col space-y-1">
+        <!-- Harga Lama Dicoret -->
+        <span class="text-sm font-medium text-gray-500 line-through">
+            Rp {{ number_format($item['unit_price'], 0, ',', '.') }}
+        </span>
+        <!-- Harga Baru -->
+        <span class="text-lg font-bold text-red-600">
+            Rp {{ number_format($item['final_price'], 0, ',', '.') }}
+        </span>
+        <!-- Badge Diskon -->
+        <span class="text-xs font-semibold bg-red-100 text-red-800 px-2 py-1 rounded-full">
+            Diskon {{ number_format($item['discount'], 0) }}%
+        </span>
+    </div>
+@else
+    <!-- Harga Normal -->
+    <span class="text-lg font-medium text-gray-900">
+        Rp {{ number_format($item['final_price'], 0, ',', '.') }}
+    </span>
+@endif
                                     </div>
                                 </div>
                             </div>
