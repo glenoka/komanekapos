@@ -23,39 +23,48 @@
                     icon="heroicon-o-magnifying-glass" class="h-9 mb-3 transition-all duration-200" />
             </x-filament::input.wrapper>
         </div>
+<!-- Daftar Produk -->
+<div class="flex-grow mt-3">
+    <div class="flex-grow mt-3">
+        <!-- Responsive grid: 2 kolom HP, 3 kolom tablet, 5 kolom desktop -->
+        <div 
+            class="grid gap-2 p-1"
+            style="grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));"
+        >
+            @foreach ($products as $product)
+            <x-filament::section
+                class="!p-2 !m-0 cursor-pointer transition-all duration-300 hover:shadow-lg hover:-translate-y-1 hover:scale-105 group border border-transparent hover:border-primary-200 dark:hover:border-primary-700"
+                wire:click="addToOrder({{ $product->id }})"
+                style="min-width: 120px; max-width: 200px;"
+            >
+                <div class="space-y-1">
+                    <!-- Product details -->
+                    <div class="text-center space-y-1">
+                        <h3
+                            class="text-xs font-medium text-gray-900 dark:text-white line-clamp-2 group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors duration-300 leading-tight">
+                            {{ $product->name ?? 'Nama Produk' }}
+                        </h3>
 
-        <!-- Daftar Produk -->
-       
-            <div class="flex-grow mt-3">
-                <!-- Grid jadi 5 kolom di layar besar -->
-                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-
-                    @foreach ($products as $product)
-                    
-                        <x-filament::section
-                            class="!p-3 !m-0 cursor-pointer transition-all duration-300 hover:shadow-lg hover:-translate-y-1 hover:scale-105 group border border-gray-200"
-                            wire:click="addToOrder({{ $product->id }})">
-                
-                            <div class="space-y-2 text-center">
-                                <h3 class="text-sm font-medium text-gray-900 dark:text-white line-clamp-2">
-                                    {{ $product->name ?? 'Nama Produk' }}
-                                </h3>
-                                <x-filament::badge color="success" size="sm">
-                                    Rp {{ number_format($product->price ?? 10000, 0, ',', '.') }}
-                                </x-filament::badge>
-                            </div>
-                        </x-filament::section>
-                    @endforeach
+                        <x-filament::badge color="success" size="sm"
+                            class="font-semibold group-hover:scale-105 transition-transform duration-200">
+                            Rp {{ number_format($product->price ?? 10000, 0, ',', '.') }}
+                        </x-filament::badge>
+                    </div>
                 </div>
-                
-            </div>
-        
-            <!-- Pagination -->
-            <div class="py-4">
-                <x-filament::pagination :paginator="$products" :page-options="[5, 10, 20, 50, 100]" extreme-links :current-page-option-property="$perPage" />
-            </div>
-       
-        
+            </x-filament::section>
+            @endforeach
+        </div>
+    </div>
+
+    <!-- Pagination -->
+    <div class="py-4">
+        <x-filament::pagination :paginator="$products" :page-options="[5, 10, 20, 50, 100]" extreme-links :current-page-option-property="$perPage" />
+    </div>
+</div>
+
+
+
+
     </div>
 
     <!-- Sidebar Cart -->
@@ -104,7 +113,7 @@
             </div>
         </div>
         @endif
-       
+
         <!-- Cart Items -->
         <div class="space-y-3 max-h-80 overflow-y-auto">
             @forelse ($order_items as $index => $item)
@@ -230,27 +239,8 @@
                                         <span class="text-gray-500 ml-2">x {{ $item['quantity'] }}</span>
                                     </div>
                                     <div class="text-right">
-                                       @if($item['discount'] != 0)
-    <div class="flex flex-col space-y-1">
-        <!-- Harga Lama Dicoret -->
-        <span class="text-sm font-medium text-gray-500 line-through">
-            Rp {{ number_format($item['unit_price'], 0, ',', '.') }}
-        </span>
-        <!-- Harga Baru -->
-        <span class="text-lg font-bold text-red-600">
-            Rp {{ number_format($item['final_price'], 0, ',', '.') }}
-        </span>
-        <!-- Badge Diskon -->
-        <span class="text-xs font-semibold bg-red-100 text-red-800 px-2 py-1 rounded-full">
-            Diskon {{ number_format($item['discount'], 0) }}%
-        </span>
-    </div>
-@else
-    <!-- Harga Normal -->
-    <span class="text-lg font-medium text-gray-900">
-        Rp {{ number_format($item['final_price'], 0, ',', '.') }}
-    </span>
-@endif
+                                        
+                                        <span class="font-medium">Rp {{ number_format($item['unit_price'] * $item['quantity'], 0, ',', '.') }}</span>
                                     </div>
                                 </div>
                             </div>
