@@ -550,7 +550,30 @@ public function increaseQuantity($productId)
         $this->number_table = '';
         $this->activity = '';
     }
+public function actionHoldBill():Action{
+     return Action::make('discountItem')
+            ->label('Beri Diskon')
+            ->icon('heroicon-o-receipt-percent')
+        ->color('info')
+        ->size('xs')
+        ->iconButton()
+            ->requiresConfirmation()
+            ->modalHeading('Konfirmasi Hold Bill')
+            ->modalDescription('You want hold the bill ? ')
+            ->modalSubmitActionLabel('Yes,')
+           
+       
+            ->action(function () {
+                $this->processHoldbill();
+        });
+}
 
+public function processHoldbill(){
+    Notification::make()
+    ->success()
+    ->title('Bill Hold Success')
+    ->send();
+}
 
     public function render()
     {

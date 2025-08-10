@@ -88,12 +88,22 @@
                 </x-filament::button>
                 @endif
 
-                <x-filament::button badge-color="danger" color="gray" size="sm">
-                    <x-slot name="badge">
-                        3
-                    </x-slot>
-                    <span>Hold Bill</span>
-                </x-filament::button>
+                <x-filament::button 
+    badge-color="danger" 
+    color="gray" 
+    size="sm" 
+    x-on:click="$dispatch('open-modal', { id: 'edit-user' })"
+>
+    <x-slot name="badge">3</x-slot>
+    <span>Hold Bill</span>
+</x-filament::button>
+
+<x-filament::modal id="edit-user" width="xl">
+    <div class="p-4">
+        <h2 class="text-lg font-semibold">Edit User</h2>
+        <p class="text-gray-600 dark:text-gray-300">Isi konten modal di sini.</p>
+    </div>
+</x-filament::modal>
 
 
 
@@ -187,29 +197,41 @@
             {{ $this->form }}
 
             <div class="flex flex-col gap-3 mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
-                <!-- Hold Bill Button -->
-                <x-filament::button wire:click="openHoldBillModal" color="gray" icon="heroicon-o-clock"
-                    size="lg" class="justify-center transition-all duration-200 hover:scale-105"
-                    wire:loading.attr="disabled">
-                    <span wire:loading.remove>Hold Bill</span>
+    <!-- Hold Bill & Process Payment Side by Side -->
+    <div class="flex flex-col sm:flex-row gap-3">
+        <!-- Hold Bill Button -->
+        <x-filament::button  
+            wire:click="mountAction('actionHoldBill')"  
+            color="gray" 
+            icon="heroicon-o-clock"
+            size="lg" 
+            class="flex-1 justify-center transition-all duration-200 hover:scale-105"
+            wire:loading.attr="disabled"
+        >
+            <span wire:loading.remove>Hold Bill</span>
+            <span wire:loading class="flex items-center">
+                <x-filament::loading-indicator class="w-4 h-4 mr-2" />
+                Processing...
+            </span>
+        </x-filament::button>
+
+        <!-- Process Payment Modal Trigger -->
+        <x-filament::modal width="xl">
+            <x-slot name="trigger">
+                <x-filament::button 
+                    color="primary" 
+                    icon="heroicon-o-credit-card" 
+                    size="lg"
+                    class="flex-1 justify-center font-semibold transition-all duration-200 hover:scale-105 shadow-lg"
+                    wire:loading.attr="disabled"
+                >
+                    <span wire:loading.remove>Process Payment</span>
                     <span wire:loading class="flex items-center">
-                        <x-filament::loading-indicator class="w-4 h-4 mr-2" />
+                        <x-filament::loading-indicator class="w-4 h-4 text-white mr-2" />
                         Processing...
                     </span>
                 </x-filament::button>
-
-                <x-filament::modal width="xl">
-                    <x-slot name="trigger">
-                        <x-filament::button color="primary" icon="heroicon-o-credit-card" size="lg"
-                            class="justify-center font-semibold transition-all duration-200 hover:scale-105 shadow-lg"
-                            wire:loading.attr="disabled">
-                            <span wire:loading.remove>Process Payment</span>
-                            <span wire:loading class="flex items-center">
-                                <x-filament::loading-indicator class="w-4 h-4 text-white mr-2" />
-                                Processing...
-                            </span>
-                        </x-filament::button>
-                    </x-slot>
+            </x-slot>
                     <div class="bg-primary-50 dark:bg-primary-900/20 p-4 rounded-lg mb-4 border border-primary-200 dark:border-primary-700">
                         <div class="text-center">
                             <p class="text-sm text-primary-600 dark:text-primary-400 font-medium">Total Payment</p>
