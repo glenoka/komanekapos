@@ -34,6 +34,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Actions\Contracts\HasActions;
 use Filament\Forms\Components\Placeholder;
+use Illuminate\Validation\ValidationException;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Actions\Concerns\InteractsWithActions;
@@ -116,6 +117,11 @@ class Pos extends Component implements HasForms, HasTable , HasActions
         $this->discount_amount = 0;
         $this->sub_total = 0;
         $this->tax_amount = 0;
+
+        $this->order_type = '';
+    $this->customer_id = '';
+    $this->number_table = '';
+    $this->activity = '';
 
         Notification::make()
             ->title('Cart cleared successfully')
@@ -550,29 +556,104 @@ public function increaseQuantity($productId)
         $this->number_table = '';
         $this->activity = '';
     }
-public function actionHoldBill():Action{
-     return Action::make('discountItem')
-            ->label('Beri Diskon')
+    public function actionHoldBill(): Action
+    {
+        return Action::make('holdBill')
+            ->label('Hold Bill')
             ->icon('heroicon-o-receipt-percent')
-        ->color('info')
-        ->size('xs')
-        ->iconButton()
+            ->color('info')
+            ->size('xs')
+            ->iconButton()
             ->requiresConfirmation()
-            ->modalHeading('Konfirmasi Hold Bill')
-            ->modalDescription('You want hold the bill ? ')
-            ->modalSubmitActionLabel('Yes,')
-           
-       
-            ->action(function () {
-                $this->processHoldbill();
-        });
-}
+            ->modalHeading('Confirm Hold Bill')
+            ->modalDescription('Are you sure you want to place this bill on hold?')
+            ->modalSubmitActionLabel('Yes, Hold Bill')
+            // NOTE: accepting Action $action here is essential
+            ->action(function (Action $action) {
+                try {
+                    // Validate component properties (your current approach)
+                    $this->validate([
+                        'order_type'  => 'required',
+                        'customer_id' => 'required',
+                    ]);
+    
+                    // Your existing save/process logic
+                    $this->processHoldbill();
+    
+                    Notification::make()
+                        ->title('Bill Placed on Hold')
+                        ->body('The selected bill has been successfully placed on hold. You can resume processing it at any time from the billing list.')
+                        ->success()
+                        ->send();
+    
+                } catch (ValidationException $e) {
+                    // Show error notification and CLOSE the modal
+                    Notification::make()
+                        ->title('Missing Required Information')
+                        ->body('Please make sure all required fields are filled before holding the bill.')
+                        ->danger()
+                        ->send();
+    
+                    // This closes the modal immediately
+                    $action->cancel();
+    
+                    return;
+                
+                }
+            });
+    }
+
+
+    
 
 public function processHoldbill(){
-    Notification::make()
-    ->success()
-    ->title('Bill Hold Success')
-    ->send();
+    $paymentData = $this->validate([
+        'order_type' => 'required',
+       'customer_id' => 'required',
+    ]);
+    $sales = Sales::create([
+        'customer_id' => $this->customer_id,
+        'sale_date' => now(),
+        'table_no' => $this->number_table,
+        'sales_type' => $this->sales_type,
+        'order_type' => $this->order_type,
+        'subtotal' => $this->sub_total,
+        'tax_amount' => $this->tax_amount,
+        'discount_amount' => $this->discount_amount,
+        'total_amount' => $this->grand_total,
+        'payment_method' => $this->payment_method,
+        'total_items' => count($this->order_items),
+        'status' => 'pending',
+        'user_id' => Auth::user()->id,
+        'notes' => $this->notes,
+    ]);
+
+    foreach ($this->order_items as $item) {
+
+        $detailSales = SalesDetail::create([
+            'sale_id' => $sales->id,
+            'product_id' => $item['product_id'],
+            'product_name' => $item['name'],
+            'quantity' => $item['quantity'],
+            'unit_price' => $item['unit_price'],
+            'original_price' => $item['price'],
+            'discount_amount' => $item['discount_amount'],
+            'total_price' => $item['final_price'],//yang sudah di kurangi diskon jika ada
+            'is_complimentary' => false,
+        ]);
+    }
+    $this->order_items = [];
+    session()->forget('orderItems');
+    $this->grand_total = 0;
+    $this->discount = 0;
+    $this->discount_amount = 0;
+    $this->sub_total = 0;
+    $this->tax_amount = 0;
+    $this->order_type = '';
+    $this->customer_id = '';
+    $this->number_table = '';
+    $this->activity = '';
+   
 }
 
     public function render()
