@@ -52,7 +52,7 @@ class Pos extends Component implements HasForms, HasTable , HasActions
     public $sub_total;
     public $order_items = [];
 
-    public $tax = 0;
+    public $tax = 11;
     public $tax_amount;
     public $discount = 0;
     public $discount_amount;
@@ -69,6 +69,9 @@ class Pos extends Component implements HasForms, HasTable , HasActions
     public $payment_method;
     public $notes;
 
+    public $holdBillList;
+    public $countBillHold=0;
+
 
 
     public function mount(): void
@@ -77,6 +80,11 @@ class Pos extends Component implements HasForms, HasTable , HasActions
             $this->order_items = session('orderItems');
         }
         //dd($this->order_items);
+
+        $this->holdBillList = Sales::where('status', 'pending')
+    ->with('detailSales')
+    ->get();
+    $this->countBillHold=count($this->holdBillList);
              
     }
     protected function getForms(): array
@@ -119,9 +127,9 @@ class Pos extends Component implements HasForms, HasTable , HasActions
         $this->tax_amount = 0;
 
         $this->order_type = '';
-    $this->customer_id = '';
-    $this->number_table = '';
-    $this->activity = '';
+        $this->customer_id = '';
+        $this->number_table = '';
+        $this->activity = '';
 
         Notification::make()
             ->title('Cart cleared successfully')
@@ -234,6 +242,21 @@ class Pos extends Component implements HasForms, HasTable , HasActions
                     ->default(fn() => $this->calculateTotal())
                     ->extraAttributes(['class' => 'font-bold text-lg'])
                     ->columnSpanFull(),
+            
+                    Hidden::make('invoice_number')
+                    ->default(function () {
+                        $latest = \App\Models\Sales::orderBy('invoice_number', 'desc')->first();
+                
+                        if ($latest && preg_match('/KBM-(\d{5})/', $latest->invoice_number, $matches)) {
+                            $lastNumber = intval($matches[1]);
+                            $nextNumber = $lastNumber + 1;
+                        } else {
+                            $nextNumber = 1;
+                        }
+                
+                        return 'KBM-' . str_pad($nextNumber, 5, '0', STR_PAD_LEFT);
+                    })
+                
             ]);
     }
 
@@ -361,7 +384,7 @@ public function increaseQuantity($productId)
     {
         $total = 0;
         foreach ($this->order_items as $item) {
-            $total += $item['final_price'] ;
+            $total += $item['price'] ;
         }
         $this->sub_total = $total; //sebelum pajak 
         return $total;
@@ -534,6 +557,7 @@ public function increaseQuantity($productId)
                 'quantity' => $item['quantity'],
                 'unit_price' => $item['unit_price'],
                 'original_price' => $item['price'],
+                'discount'=>$item['discount'],
                 'discount_amount' => $item['discount_amount'],
                 'total_price' => $item['final_price'],//yang sudah di kurangi diskon jika ada
                 'is_complimentary' => false,
@@ -653,8 +677,62 @@ public function processHoldbill(){
     $this->customer_id = '';
     $this->number_table = '';
     $this->activity = '';
+    $this->countBillHold++;
    
 }
+
+public function loadHoldBillList(){
+    
+    $this->holdBillList = Sales::where('status', 'pending')
+    ->with('detailSales','customer')
+    ->get();
+    $this->dispatch('open-modal', id: 'ModalListBill');
+}
+
+public function resumeBill($billId) {
+    $bill = Sales::with('detailSales.product','customer')->findOrFail($billId);
+   
+    // Kosongkan dulu order_items biar nggak numpuk
+    $this->order_items = [];
+    session()->forget('orderItems'); //session di forget dulu biar nggak numpuk
+    $this->order_type = $bill->order_type;
+    $this->customer_id = $bill->customer_id;
+   $this->number_table = $bill->table_no;
+   $this->activity= $bill->activity;
+    // Loop setiap item di detailSales dan masukkan ke order_items
+    foreach ($bill->detailSales as $item) {
+        $product = $item->product; // pastikan relasi 'product' sudah di-load
+
+        $this->order_items[] = [
+            'product_id'       => $product->id,
+            'name'             => $product->name,
+            'unit_price'       => $item->unit_price,
+            'price'            => $item->original_price, 
+            'discount'         => $item->discount ?? 0,
+            'discount_amount'  => $item->discount_amount ?? 0,
+            'final_price'      => $item->total_price,
+            'quantity'         => $item->quantity,
+        ];
+    }
+
+  session()->put('orderItems', $this->order_items);
+    $this->calculateSubtotal();
+    $this->calculateTotal();
+    $this->dispatch('close-modal', id: 'ModalListBill');
+}
+
+    public function deleteBill($billId) {
+     $delete=Sales::find($billId)->delete();
+     $this->dispatch('close-modal', id: 'ModalListBill');
+     if($delete){
+        Notification::make('delete')
+            ->title('Deletes success')
+            ->success()
+            ->send();
+     }
+     $this->countBillHold--;
+    
+    }
 
     public function render()
     {

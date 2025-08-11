@@ -27,8 +27,14 @@ class Sales extends Model
         'notes',
         'slug',
     ];
-    protected function detailsy(){
-        return $this->hasMany(SalesDetail::class);
+    public function detailSales()
+    {
+        return $this->hasMany(SalesDetail::class, 'sale_id', 'id');
+    }
+
+    public function customer()
+    {
+        return $this->belongsTo(Customer::class, 'customer_id', 'id');
     }
     protected static function boot()
     {
@@ -40,9 +46,7 @@ class Sales extends Model
             } while (static::where('slug', $model->slug)->exists());
         });
         
-         static::creating(function ($model) {
-        $model->invoice_number = 'KBM-' . Str::uuid()->toString();
-    });
+        
     }
      public function getRouteKeyName()
     {

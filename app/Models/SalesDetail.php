@@ -18,4 +18,8 @@ class SalesDetail extends Model
         'total_price',
         'is_complimentary'
     ];
+    public function product()
+{
+    return $this->belongsTo(Product::class);
+}
 }

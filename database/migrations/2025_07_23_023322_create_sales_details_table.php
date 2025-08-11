@@ -20,6 +20,7 @@ return new class extends Migration
             $table->string('unit')->default('porsi'); // satuan (porsi, gelas, botol, dll)
             $table->decimal('unit_price', 15, 2); // harga per unit saat transaksi
             $table->decimal('original_price', 15, 2); // harga asli sebelum diskon
+            $table->integer('discount')->nullable(); //  diskon
             $table->decimal('discount_amount', 15, 2)->default(0); // diskon per item
             $table->decimal('total_price', 15, 2); // total untuk item ini
             $table->boolean('is_complimentary')->default(false); // apakah item ini complimentary
