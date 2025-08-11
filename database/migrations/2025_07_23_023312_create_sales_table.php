@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('sales', function (Blueprint $table) {
             $table->id();
-            $table->string('invoice_number')->unique();
+            $table->string('invoice_number')->nullable();
             $table->foreignId('customer_id')->nullable()->constrained('customers')->onDelete('set null');
             $table->datetime('sale_date');
             $table->string('table_no')->nullable();
@@ -25,7 +25,7 @@ return new class extends Migration
                 'vip_guest',         // Tamu VIP
                 'business_entertainment', // Entertaining tamu bisnis
                 'banquet/wedding',       // Event/wedding catering
-            ])->default('regular');
+            ])->default('regular')->nullable();
             $table->enum('order_type', ['dine_in', 'room_service', 'takeaway','other'])->default('dine_in');
             // Financial info
             $table->decimal('subtotal', 15, 2);
@@ -34,7 +34,7 @@ return new class extends Migration
             $table->decimal('total_amount', 15, 2);
             
             // Payment info
-            $table->enum('payment_method', ['cash', 'card', 'qris','room_charge','complimentary'])->default('room_charge');
+            $table->enum('payment_method', ['cash', 'card', 'qris','room_charge','complimentary'])->default('room_charge')->nullable();
 
             $table->integer('total_items');
          

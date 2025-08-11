@@ -39,6 +39,8 @@ use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Actions\Concerns\InteractsWithActions;
 
+use Illuminate\Support\Facades\DB;
+
 class Pos extends Component implements HasForms, HasTable , HasActions
 {
     use InteractsWithForms;
@@ -71,6 +73,8 @@ class Pos extends Component implements HasForms, HasTable , HasActions
 
     public $holdBillList;
     public $countBillHold=0;
+
+    public $bill_slug; //untuk slug bill yang di resume 
 
 
 
@@ -108,13 +112,6 @@ class Pos extends Component implements HasForms, HasTable , HasActions
         $this->resetPage();
     }
 
-    private function getSessionKey(): string
-    {
-        return 'orderItem'  . '_' . session()->getId();
-    }
-
-
-    
 
     public function clearOrder()
     {
@@ -130,6 +127,8 @@ class Pos extends Component implements HasForms, HasTable , HasActions
         $this->customer_id = '';
         $this->number_table = '';
         $this->activity = '';
+
+        $this->bill_slug=''; //jika sebelumnya ada resume bill agar terhapus
 
         Notification::make()
             ->title('Cart cleared successfully')
@@ -243,19 +242,7 @@ class Pos extends Component implements HasForms, HasTable , HasActions
                     ->extraAttributes(['class' => 'font-bold text-lg'])
                     ->columnSpanFull(),
             
-                    Hidden::make('invoice_number')
-                    ->default(function () {
-                        $latest = \App\Models\Sales::orderBy('invoice_number', 'desc')->first();
-                
-                        if ($latest && preg_match('/KBM-(\d{5})/', $latest->invoice_number, $matches)) {
-                            $lastNumber = intval($matches[1]);
-                            $nextNumber = $lastNumber + 1;
-                        } else {
-                            $nextNumber = 1;
-                        }
-                
-                        return 'KBM-' . str_pad($nextNumber, 5, '0', STR_PAD_LEFT);
-                    })
+                   
                 
             ]);
     }
@@ -266,6 +253,9 @@ class Pos extends Component implements HasForms, HasTable , HasActions
         return $form
 
             ->schema([
+
+                Hidden::make('bill_slug')
+                ->default(fn () => $this->bill_slug),
                 // Sales Type Section
                 Section::make('Transaction Details')
                     ->description('Configure transaction type and payment method')
@@ -530,8 +520,10 @@ public function increaseQuantity($productId)
         //     'notes' => $this->notes,
         // ];
         // dd($dataTest);
-
-        $sales = Sales::create([
+DB::transaction(function () {
+         $sales=Sales::updateOrCreate(
+        ['slug' => $this->bill_slug],
+        [
             'customer_id' => $this->customer_id,
             'sale_date' => now(),
             'table_no' => $this->number_table,
@@ -550,7 +542,10 @@ public function increaseQuantity($productId)
 
         foreach ($this->order_items as $item) {
 
-            $detailSales = SalesDetail::create([
+            $detailSales = SalesDetail::updateOrCreate([
+                'sale_id' => $sales->id,
+                'product_id' => $item['product_id'],
+            ],[
                 'sale_id' => $sales->id,
                 'product_id' => $item['product_id'],
                 'product_name' => $item['name'],
@@ -563,7 +558,7 @@ public function increaseQuantity($productId)
                 'is_complimentary' => false,
             ]);
         }
-
+    });
         Notification::make('payment')
             ->title('Paymanet Success')
             ->success()
@@ -579,6 +574,15 @@ public function increaseQuantity($productId)
         $this->customer_id = '';
         $this->number_table = '';
         $this->activity = '';
+
+        $this->refreshCountBillHold();
+        //forget dan kosongkan order_item
+        $this->order_items = [];
+    session()->forget('orderItems');
+
+     $this->bill_slug=''; //jika sebelumnya ada resume bill agar terhapus
+
+
     }
     public function actionHoldBill(): Action
     {
@@ -635,37 +639,51 @@ public function processHoldbill(){
         'order_type' => 'required',
        'customer_id' => 'required',
     ]);
-    $sales = Sales::create([
-        'customer_id' => $this->customer_id,
-        'sale_date' => now(),
-        'table_no' => $this->number_table,
-        'sales_type' => $this->sales_type,
-        'order_type' => $this->order_type,
-        'subtotal' => $this->sub_total,
-        'tax_amount' => $this->tax_amount,
-        'discount_amount' => $this->discount_amount,
-        'total_amount' => $this->grand_total,
-        'payment_method' => $this->payment_method,
-        'total_items' => count($this->order_items),
-        'status' => 'pending',
-        'user_id' => Auth::user()->id,
-        'notes' => $this->notes,
-    ]);
+
+     
+
+DB::transaction(function () {
+    $sales = Sales::updateOrCreate(
+        ['slug' => $this->bill_slug],
+        [
+            'customer_id'     => $this->customer_id,
+            'sale_date'       => now(),
+            'table_no'        => $this->number_table,
+            'sales_type'      => $this->sales_type,
+            'order_type'      => $this->order_type,
+            'subtotal'        => $this->sub_total,
+            'tax_amount'      => $this->tax_amount,
+            'discount_amount' => $this->discount_amount,
+            'total_amount'    => $this->grand_total,
+            'payment_method'  => $this->payment_method,
+            'total_items'     => count($this->order_items),
+            'status'          => 'pending',
+            'user_id'         => Auth::id(),
+            'notes'           => $this->notes,
+        ]
+    );
 
     foreach ($this->order_items as $item) {
-
-        $detailSales = SalesDetail::create([
-            'sale_id' => $sales->id,
-            'product_id' => $item['product_id'],
-            'product_name' => $item['name'],
-            'quantity' => $item['quantity'],
-            'unit_price' => $item['unit_price'],
-            'original_price' => $item['price'],
-            'discount_amount' => $item['discount_amount'],
-            'total_price' => $item['final_price'],//yang sudah di kurangi diskon jika ada
-            'is_complimentary' => false,
-        ]);
+        SalesDetail::updateOrCreate(
+            [
+                'sale_id'   => $sales->id,
+                'product_id' => $item['product_id'],
+            ],
+            [
+                'product_name'      => $item['name'],
+                'quantity'          => $item['quantity'],
+                'unit_price'        => $item['unit_price'],
+                'original_price'    => $item['price'],
+                'discount_amount'   => $item['discount_amount'],
+                'total_price'       => $item['final_price'], // harga setelah diskon
+                'is_complimentary'  => false,
+            ]
+        );
     }
+
+});
+
+
     $this->order_items = [];
     session()->forget('orderItems');
     $this->grand_total = 0;
@@ -677,10 +695,13 @@ public function processHoldbill(){
     $this->customer_id = '';
     $this->number_table = '';
     $this->activity = '';
-    $this->countBillHold++;
+    $this->refreshCountBillHold();
    
 }
-
+public function refreshCountBillHold(){
+    $this->countBillHold = Sales::where('status', 'pending')->count();
+    return $this->countBillHold;
+}
 public function loadHoldBillList(){
     
     $this->holdBillList = Sales::where('status', 'pending')
@@ -689,9 +710,16 @@ public function loadHoldBillList(){
     $this->dispatch('open-modal', id: 'ModalListBill');
 }
 
-public function resumeBill($billId) {
-    $bill = Sales::with('detailSales.product','customer')->findOrFail($billId);
+public function resumeBill($slug) {
    
+    $bill = Sales::with('detailSales.product', 'customer')
+        ->where('slug', $slug)
+        ->firstOrFail();
+   
+
+    $this->bill_slug=$slug;
+   
+        
     // Kosongkan dulu order_items biar nggak numpuk
     $this->order_items = [];
     session()->forget('orderItems'); //session di forget dulu biar nggak numpuk
@@ -699,6 +727,7 @@ public function resumeBill($billId) {
     $this->customer_id = $bill->customer_id;
    $this->number_table = $bill->table_no;
    $this->activity= $bill->activity;
+
     // Loop setiap item di detailSales dan masukkan ke order_items
     foreach ($bill->detailSales as $item) {
         $product = $item->product; // pastikan relasi 'product' sudah di-load
@@ -721,8 +750,9 @@ public function resumeBill($billId) {
     $this->dispatch('close-modal', id: 'ModalListBill');
 }
 
-    public function deleteBill($billId) {
-     $delete=Sales::find($billId)->delete();
+    public function deleteBill($slug) {
+     $delete=Sales::where('slug',$slug)->delete();
+    
      $this->dispatch('close-modal', id: 'ModalListBill');
      if($delete){
         Notification::make('delete')

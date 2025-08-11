@@ -121,11 +121,14 @@
 
                                         <div class="flex gap-2">
                                             <x-filament::button color="info" size="sm"
-                                                wire:click="resumeBill({{ $bill->id }})">
+                                               wire:click="resumeBill('{{ $bill->slug }}')"
+
+>
                                                 Resume
                                             </x-filament::button>
                                             <x-filament::button color="danger" size="sm"
-                                                wire:click="deleteBill({{ $bill->id }})">
+                                               wire:click="deleteBill('{{ $bill->slug }}')"
+>
                                                 Delete
                                             </x-filament::button>
                                         </div>
