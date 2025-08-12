@@ -44,9 +44,10 @@ class Sales extends Model
             do {
                 $model->slug = Str::random(10);
             } while (static::where('slug', $model->slug)->exists());
-
+            
+        });
+        static::updating(function ($model) {
             if ($model->status === 'completed' && empty($model->invoice_number)) {
-               dd();
                 $model->invoice_number = self::generateInvoiceNumber();
             }
         });

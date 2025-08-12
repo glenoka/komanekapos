@@ -662,6 +662,16 @@ DB::transaction(function () {
             'notes'           => $this->notes,
         ]
     );
+    //hapus data yang tidak ada di order_item
+     // Ambil semua product_id dari request
+     $newProductIds = collect($this->order_items)->pluck('product_id')->toArray();
+
+     // Hapus item lama yang tidak ada di request
+     SalesDetail::where('sale_id', $sales->id)
+         ->whereNotIn('product_id', $newProductIds)
+         ->delete();
+
+
 
     foreach ($this->order_items as $item) {
         SalesDetail::updateOrCreate(
