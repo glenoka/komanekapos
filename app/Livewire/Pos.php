@@ -784,7 +784,10 @@ public function resumeBill($slug) {
             ->with('category') // Eager load kategori untuk optimasi
             ->paginate($this->perPage === 'all' ? Product::count() : $this->perPage);
 
-        $categories = Category::select('id', 'name')->get();
+            $categories = Category::select('id', 'name')
+            ->orderBy('sort_order', 'asc')
+            ->get();
+        
         $categories->prepend((object)['id' => 0, 'name' => 'All']); // Tambahkan di awal
 
         return view('livewire.pos', [
