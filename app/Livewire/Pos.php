@@ -2,7 +2,7 @@
 
 namespace App\Livewire;
 
-use Log;
+
 use Filament\Forms;
 use App\Models\Sales;
 use App\Models\Product;
@@ -14,17 +14,21 @@ use App\Models\Category;
 use App\Models\Customer;
 use Filament\Forms\Form;
 use Filament\Tables\Table;
+use Mike42\Escpos\Printer;
+
 use App\Models\SalesDetail;
 
 use Filament\Actions\Action;
-
 use Livewire\WithPagination;
+use Mike42\Escpos\EscposImage;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\HtmlString;
 use Filament\Tables\Columns\Column;
+
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
-
 use Filament\Forms\Components\Section;
 use Filament\Forms\Contracts\HasForms;
 use Filament\Forms\Components\Textarea;
@@ -34,12 +38,14 @@ use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Actions\Contracts\HasActions;
 use Filament\Forms\Components\Placeholder;
+
 use Illuminate\Validation\ValidationException;
+
+
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Actions\Concerns\InteractsWithActions;
-
-use Illuminate\Support\Facades\DB;
+use Mike42\Escpos\PrintConnectors\NetworkPrintConnector;
 
 class Pos extends Component implements HasForms, HasTable , HasActions
 {
@@ -558,6 +564,8 @@ DB::transaction(function () {
                 'is_complimentary' => false,
             ]);
         }
+        //print
+        $this->printOrderToLan( $sales->id);
     });
         Notification::make('payment')
             ->title('Paymanet Success')
@@ -581,7 +589,7 @@ DB::transaction(function () {
     session()->forget('orderItems');
 
      $this->bill_slug=''; //jika sebelumnya ada resume bill agar terhapus
-
+  
 
     }
     public function actionHoldBill(): Action
@@ -773,6 +781,84 @@ public function resumeBill($slug) {
      $this->countBillHold--;
     
     }
+
+    //print
+    function printOrderToLan($saleId)
+    {
+        $sale = Sales::with('details')->findOrFail($saleId);
+    
+        try {
+            $ip = "192.168.4.38"; // IP printer
+            $port = 9100; // Port default printer thermal LAN
+    
+            $connector = new NetworkPrintConnector($ip, $port);
+            $printer = new Printer($connector);
+    
+            // ===== HEADER TOKO =====
+            $printer->setJustification(Printer::JUSTIFY_CENTER);
+            $printer->text("TOKO MAJU JAYA\n");
+            $printer->text("Jl. Contoh No. 123\n");
+            $printer->text("Telp: 08123456789\n");
+            $printer->text(str_repeat("=", 32) . "\n");
+    
+            // ===== INFO ORDER (Dengan Margin) =====
+            $printer->setJustification(Printer::JUSTIFY_LEFT);
+            $printer->text("  Invoice : {$sale->invoice_number}\n"); // 2 spasi kiri
+            $printer->text("  Tanggal : " . now()->format('d-m-Y H:i') . "\n");
+            $printer->text(str_repeat("-", 32) . "\n");
+    
+            // ===== LIST ITEM (Dengan Margin) =====
+            foreach ($this->order_items as $item) {
+                // Nama produk
+                $printer->text("  " . $item['name'] . "\n"); // Margin kiri 2 spasi
+    
+                // Format qty x harga satuan ........ total
+                $line = "  " . $item['quantity'] . " x " . number_format($item['unit_price']); 
+                $printer->text(
+                    $line .
+                    str_pad(
+                        number_format($item['final_price']),
+                        32 - strlen($line), // lebar max 32 karakter
+                        " ",
+                        STR_PAD_LEFT
+                    ) . "\n"
+                );
+            }
+    
+            // ===== RINCIAN HARGA =====
+            $printer->text(str_repeat("-", 32) . "\n");
+            $printer->text("  Subtotal" . str_pad(number_format($sale->subtotal), 23, " ", STR_PAD_LEFT) . "\n");
+            $printer->text("  Tax" . str_pad(number_format($sale->tax_amount), 27, " ", STR_PAD_LEFT) . "\n");
+            $printer->text("  Diskon" . str_pad("-" . number_format($sale->discount_amount), 24, " ", STR_PAD_LEFT) . "\n");
+            $printer->text(str_repeat("-", 32) . "\n");
+    
+            // ===== TOTAL =====
+            $printer->text("  TOTAL" . str_pad(number_format($sale->total_amount), 26, " ", STR_PAD_LEFT) . "\n");
+            $printer->text(str_repeat("=", 32) . "\n");
+    
+            // ===== FOOTER =====
+            $printer->setJustification(Printer::JUSTIFY_CENTER);
+            $printer->text("Terima kasih telah berbelanja!\n");
+            $printer->feed(1);
+    
+            // ===== TANDA TANGAN (Dengan Margin Tengah) =====
+            $printer->feed(2);
+            $printer->setJustification(Printer::JUSTIFY_LEFT);
+            $printer->text(str_pad("Penerima", 32, " ", STR_PAD_BOTH) . "\n");
+            $printer->feed(3);
+            $printer->text(str_pad("(__________________________)", 32, " ", STR_PAD_BOTH) . "\n");
+    
+           
+            $printer->feed(3);
+            $printer->cut();
+            $printer->close();
+    
+        } catch (\Exception $e) {
+            Log::error("Gagal print: " . $e->getMessage());
+        }
+    }
+    
+
 
     public function render()
     {
